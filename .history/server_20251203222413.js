@@ -294,24 +294,6 @@ app.use((req, res, next) => {
   return auth(req, res, next);
 });
 
-
-apicache.options({
-  appendKey: false, 
-  jsonp: false, 
-  enabled: true, 
-  redisClient: false,
-  defaultDuration: '20 seconds',
-  statusCodes: {
-    include: [200]
-  }
-});
-
-// أهم خطوة ▼▼▼▼▼
-// إزالة query params من المفتاح
-apicache.options({ 
-    keyGenerator: (req, res) => req.originalUrl.split('?')[0]
-});
-
 // ======================================================
 
 
