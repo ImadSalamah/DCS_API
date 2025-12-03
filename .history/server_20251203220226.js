@@ -5547,7 +5547,7 @@ connection = await getOracleConnection();
 });
 
 // 81. Get all patients with full data including images
-app.get("/all-patients", cache("10 minutes"), async (req, res) => {
+app.get("/all-patients", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
 connection = await getOracleConnection();
@@ -5689,7 +5689,7 @@ connection = await getOracleConnection();
 });
 
 // 84. Get full patient details by ID
-app.get("/patients-full/:id", cache("10 minutes"), async (req, res) => {
+app.get("/patients-full/:id", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {

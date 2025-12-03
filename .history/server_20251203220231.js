@@ -5689,7 +5689,7 @@ connection = await getOracleConnection();
 });
 
 // 84. Get full patient details by ID
-app.get("/patients-full/:id", cache("10 minutes"), async (req, res) => {
+app.get("/patients-full/:id", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {

@@ -1230,7 +1230,7 @@ app.get("/check-doctor/:id", cache("10 minutes"), async (req, res) => {
 });
 
 // 12. Find patient by appointment ID
-app.get("/patients/by-appointment-id/:idnumber", cache("10 minutes"), async (req, res) => {
+app.get("/patients/by-appointment-id/:idnumber", cache("5 minutes"), async (req, res) => {
   const { idnumber } = req.params;
   let connection;
 
@@ -1261,7 +1261,7 @@ app.get("/patients/by-appointment-id/:idnumber", cache("10 minutes"), async (req
 });
 
 // 13. Get all pending users
-app.get("/pendingUsers", cache("10 minutes"), async (req, res) => {
+app.get("/pendingUsers", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection(); // FIXED
@@ -1563,7 +1563,7 @@ app.post("/updateUser", async (req, res) => {
 });
 
 // 19. Get all rejected users
-app.get("/rejectedUsers", cache("10 minutes"), async (req, res) => {
+app.get("/rejectedUsers", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection(); // FIXED
@@ -1584,7 +1584,7 @@ app.get("/rejectedUsers", cache("10 minutes"), async (req, res) => {
 });
 
 // 20. Get student university ID (FIXED routing conflict)
-app.get("/students/:userId", cache("10 minutes"), async (req, res) => {
+app.get("/students/:userId", cache("5 minutes"), async (req, res) => {
   const { userId } = req.params;
 
   let connection;
@@ -2217,7 +2217,7 @@ registerPaginatedCacheRoute({
 });
 
 // 26. Get single doctor with features - FIXED VERSION
-app.get("/doctors/:id", cache("10 minutes"), async (req, res) => {
+app.get("/doctors/:id", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
@@ -2314,7 +2314,7 @@ app.get("/doctors/:id", cache("10 minutes"), async (req, res) => {
 });
 
 // 27. Get doctor type only
-app.get("/doctors/:id/type", cache("10 minutes"), async (req, res) => {
+app.get("/doctors/:id/type", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
@@ -2674,7 +2674,7 @@ app.post("/appointments", async (req, res) => {
 });
 
 
-app.get("/appointments/count-by-year", cache("10 minutes"), async (req, res) => {
+app.get("/appointments/count-by-year", cache("5 minutes"), async (req, res) => {
   const { date, studyYear } = req.query;
 
   if (!date || !studyYear) {
@@ -2721,7 +2721,7 @@ app.get("/appointments/count-by-year", cache("10 minutes"), async (req, res) => 
 });
 
 // 34. Get appointment count
-app.get("/appointments/count", cache("10 minutes"), async (req, res) => {
+app.get("/appointments/count", cache("5 minutes"), async (req, res) => {
   const { date } = req.query;
 
   if (!date) {
@@ -2749,7 +2749,7 @@ app.get("/appointments/count", cache("10 minutes"), async (req, res) => {
 });
 
 // 35. Get booking settings
-app.get("/bookingSettings", cache("10 minutes"), async (req, res) => {
+app.get("/bookingSettings", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -2777,7 +2777,7 @@ app.get("/bookingSettings", cache("10 minutes"), async (req, res) => {
 });
 
 // 36. Get all waiting list entries - ULTRA SAFE VERSION
-app.get("/waitingList", cache("10 minutes"), async (req, res) => {
+app.get("/waitingList", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -2952,7 +2952,7 @@ app.delete("/waitingList/:id", async (req, res) => {
 });
 
 // 39. Get all patient exams
-app.get("/patientExams", cache("10 minutes"), async (req, res) => {
+app.get("/patientExams", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3050,7 +3050,7 @@ app.post("/patientExams", async (req, res) => {
 });
 
 // 41. Get all appointments
-app.get("/appointments", cache("10 minutes"), async (req, res) => {
+app.get("/appointments", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3089,7 +3089,7 @@ app.get("/appointments", cache("10 minutes"), async (req, res) => {
 });
 
 // 42. Get patient by ID
-app.get("/patients/:id", cache("10 minutes"), async (req, res) => {
+app.get("/patients/:id", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
 
   let connection;
@@ -3209,7 +3209,7 @@ app.post("/doctors", async (req, res) => {
 });
 
 // 45. Get all examinations with basic data - FINAL FIXED VERSION
-app.get("/all-examinations-simple", cache("10 minutes"), auth, async (req, res) => {
+app.get("/all-examinations-simple", cache("5 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3286,7 +3286,7 @@ app.get("/all-examinations-simple", cache("10 minutes"), auth, async (req, res) 
 });
 
 //46. Get full examination details by exam ID
-app.get("/examination-details/:examId", cache("10 minutes"), auth, async (req, res) => {
+app.get("/examination-details/:examId", cache("5 minutes"), auth, async (req, res) => {
   let connection;
   try {
     const { examId } = req.params;
@@ -3373,7 +3373,7 @@ app.get("/examination-details/:examId", cache("10 minutes"), auth, async (req, r
 });
 
 //47. Get all examinations with full data - FINAL FIXED VERSION
-app.get("/all-examinations-full", cache("10 minutes"), auth, async (req, res) => {
+app.get("/all-examinations-full", cache("5 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3459,7 +3459,7 @@ app.get("/all-examinations-full", cache("10 minutes"), auth, async (req, res) =>
 });
 
 // 48. Get examination by patient ID 
-app.get("/examinations/:patientId", cache("10 minutes"), auth, async (req, res) => {
+app.get("/examinations/:patientId", cache("5 minutes"), auth, async (req, res) => {
   const { patientId } = req.params;
 
   let connection;
@@ -3576,7 +3576,7 @@ app.put('/examinations/:examId', auth, async (req, res) => {
 });
 
 // 50. Get all examinations
-app.get("/all-examinations", cache("10 minutes"), auth, async (req, res) => {
+app.get("/all-examinations", cache("5 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3689,7 +3689,7 @@ app.get("/all-examinations", cache("10 minutes"), auth, async (req, res) => {
 
 
 // 51. Get single examination with full CLOB data 
-app.get("/examination-full/:examId", cache("10 minutes"), auth, async (req, res) => {
+app.get("/examination-full/:examId", cache("5 minutes"), auth, async (req, res) => {
   let connection;
   try {
     const { examId } = req.params;
@@ -3846,7 +3846,7 @@ app.post("/xray_requests", async (req, res) => {
 });
 
 // 52. Get x-ray requests (optional status filter)
-app.get("/xray_requests", cache("10 minutes"), async (req, res) => {
+app.get("/xray_requests", cache("5 minutes"), async (req, res) => {
   let connection;
 
   try {
@@ -4105,7 +4105,7 @@ app.get("/radiology/profile", async (req, res) => {
 });
 
 // 56. Get all students with user data - improved
-app.get("/students-with-users",  cache("10 minutes"), async (req, res) => {
+app.get("/students-with-users",  cache("5 minutes"), async (req, res) => {
   let connection;
 
   try {
@@ -4286,7 +4286,7 @@ app.post("/xray_images", async (req, res) => {
 });
 
 //58.
-app.get("/xray-images/patient/:patientId", cache("10 minutes"), async (req, res) => {
+app.get("/xray-images/patient/:patientId", cache("5 minutes"), async (req, res) => {
   const { patientId } = req.params;
   let connection;
 
@@ -4325,7 +4325,7 @@ app.get("/xray-images/patient/:patientId", cache("10 minutes"), async (req, res)
 });
 
 //59.
-app.get("/xray-images/request/:requestId", cache("10 minutes"), async (req, res) => {
+app.get("/xray-images/request/:requestId", cache("5 minutes"), async (req, res) => {
   const { requestId } = req.params;
   let connection;
 
@@ -4395,7 +4395,7 @@ app.delete("/xray-images/:imageId", async (req, res) => {
 });
 
 //61.
-app.get("/check-xray-requests", cache("10 minutes"), async (req, res) => {
+app.get("/check-xray-requests", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -4464,7 +4464,7 @@ app.get("/check-xray-requests", cache("10 minutes"), async (req, res) => {
 
 
 // 63. GET endpoint    
-app.get('/student-xray-requests/:studentId', cache("10 minutes"), async (req, res) => {
+app.get('/student-xray-requests/:studentId', cache("5 minutes"), async (req, res) => {
   const { studentId } = req.params;
 
   let connection;
@@ -4587,7 +4587,7 @@ app.patch("/update-xray-image-url", async (req, res) => {
 });
 
 // 65. GET pending requests 
-app.get('/api/student-xray-requests/:studentId', cache("10 minutes"), async (req, res) => {
+app.get('/api/student-xray-requests/:studentId', cache("5 minutes"), async (req, res) => {
   const { studentId } = req.params;
 
   let connection;
@@ -4760,7 +4760,7 @@ app.post("/clinical_procedures", async (req, res) => {
 });
 
 // 67. Get clinical procedures by patient ID
-app.get("/clinical_procedures/patient/:patientId", cache("10 minutes"), async (req, res) => {
+app.get("/clinical_procedures/patient/:patientId", cache("5 minutes"), async (req, res) => {
   const { patientId } = req.params;
   let connection;
 
@@ -4953,7 +4953,7 @@ app.post("/prescriptions", async (req, res) => {
 });
 
 // 70. Get prescriptions by patient ID
-app.get("/prescriptions/patient/:patientId", cache("10 minutes"), async (req, res) => {
+app.get("/prescriptions/patient/:patientId", cache("5 minutes"), async (req, res) => {
   const { patientId } = req.params;
 
   let connection;
@@ -5110,7 +5110,7 @@ app.delete("/prescriptions/:prescriptionId", async (req, res) => {
 });
 
 // 73. Get active assignments
-app.get("/patient_assignments", cache("10 minutes"), async (req, res) => {
+app.get("/patient_assignments", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -5261,7 +5261,7 @@ app.delete('/clear_all_assignments', async (req, res) => {
 });
 
 // 77. Get students assigned to a patient
-app.get('/patient_assignments/:patientId', cache("10 minutes"), async (req, res) => {
+app.get('/patient_assignments/:patientId', cache("5 minutes"), async (req, res) => {
   const { patientId } = req.params;
 
   let connection;
@@ -5323,7 +5323,7 @@ app.delete('/remove_specific_assignment/:patientId/:studentId', async (req, res)
 
 
 // 79. GET /xray_custom_report   
-app.get('/xray_custom_report', cache("10 minutes"), async (req, res) => {
+app.get('/xray_custom_report', cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     const { startDate, endDate } = req.query;
@@ -5376,7 +5376,7 @@ app.get('/xray_custom_report', cache("10 minutes"), async (req, res) => {
 });
 
 // 80. Get student examinations - NUCLEAR CIRCULAR REFERENCE FIX
-app.get("/student-examinations/:studentId", cache("10 minutes"), async (req, res) => {
+app.get("/student-examinations/:studentId", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
     const { studentId } = req.params;
@@ -5547,7 +5547,7 @@ connection = await getOracleConnection();
 });
 
 // 81. Get all patients with full data including images
-app.get("/all-patients", cache("10 minutes"), async (req, res) => {
+app.get("/all-patients", cache("5 minutes"), async (req, res) => {
   let connection;
   try {
 connection = await getOracleConnection();
@@ -5689,7 +5689,7 @@ connection = await getOracleConnection();
 });
 
 // 84. Get full patient details by ID
-app.get("/patients-full/:id", cache("10 minutes"), async (req, res) => {
+app.get("/patients-full/:id", cache("5 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
