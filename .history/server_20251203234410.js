@@ -163,7 +163,15 @@ function defaultPaginatedResponse({ res, data = [], limit, page }) {
   });
 }
 
-
+function registerPaginatedCacheRoute({
+  path,
+  cacheDuration = "20 seconds",
+  paginationOptions = {},
+  getSql,
+  formatRow = row => row,
+  responseBuilder = defaultPaginatedResponse,
+  middlewares = []
+}) 
 {
   const { defaultLimit = 50, maxLimit = 500 } = paginationOptions;
 
@@ -900,84 +908,31 @@ app.get("/students/by-university-id/:uniId", cache("10 minutes"), auth, async (r
   }
 });
 
-// ======================================================
-// 6. Get all patients (Simple Version + Cache)
-// ======================================================
-app.get("/patients", cache("30 seconds"), auth, async (req, res) => {
-  let connection;
-
-  // Pagination
-  const page = parseInt(req.query.page || "1");
-  const limit = parseInt(req.query.limit || "500"); // default = 500 حسب كودك الأصلي
-  const offset = (page - 1) * limit;
-
-  try {
-    connection = await getOracleConnection();
-
-    // SQL الأساسي
-    let sql = `
-      SELECT *
-      FROM (
-        SELECT 
-          p.PATIENT_UID as id,
-          p.FIRSTNAME as firstName,
-          p.FATHERNAME as fatherName,
-          p.GRANDFATHERNAME as grandfatherName,
-          p.FAMILYNAME as familyName,
-          p.IDNUMBER as idNumber,
-          p.GENDER as gender,
-          p.PHONE as phone,
-          p.MEDICAL_RECORD_NO as medicalRecordNo,
-          p.STATUS as status,
-          ROW_NUMBER() OVER (ORDER BY p.FIRSTNAME, p.FAMILYNAME) AS RN
-        FROM PATIENTS p
-        WHERE p.STATUS = 'active' 
-           OR p.STATUS IS NULL 
-           OR p.STATUS = 'EXAMINED'
-      )
-      WHERE RN BETWEEN :startRow AND :endRow
-    `;
-
-    const binds = {
-      startRow: offset + 1,
-      endRow: offset + limit
-    };
-
-    const result = await connection.execute(sql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
-
-    const patients = result.rows.map(row => ({
-      id: row.ID,
-      firstName: row.FIRSTNAME,
-      fatherName: row.FATHERNAME,
-      grandfatherName: row.GRANDFATHERNAME,
-      familyName: row.FAMILYNAME,
-      idNumber: row.IDNUMBER,
-      gender: row.GENDER,
-      phone: row.PHONE,
-      medicalRecordNo: row.MEDICAL_RECORD_NO,
-      status: row.STATUS
-    }));
-
-    res.status(200).json({
-      page,
-      limit,
-      count: patients.length,
-      data: patients
-    });
-
-  } catch (err) {
-    console.error("❌ Error fetching patients:", err);
-    res.status(500).json({
-      message: "❌ Error fetching patients",
-      error: err.message
-    });
-  } finally {
-    if (connection) await connection.close();
-  }
+// 6. Get all patients
+registerPaginatedCacheRoute({
+  path: "/patients",
+  cacheDuration: "30 seconds",
+  paginationOptions: { defaultLimit: 0, maxLimit: 500 },
+  getSql: () => ({
+    sql: `
+      SELECT 
+        PATIENT_UID as id,
+        FIRSTNAME as firstName,
+        FATHERNAME as fatherName,
+        GRANDFATHERNAME as grandfatherName,
+        FAMILYNAME as familyName,
+        IDNUMBER as idNumber,
+        GENDER as gender,
+        PHONE as phone,
+        MEDICAL_RECORD_NO as medicalRecordNo,
+        STATUS as status
+      FROM PATIENTS 
+      WHERE STATUS = 'active' OR STATUS IS NULL OR STATUS = 'EXAMINED'
+      ORDER BY FIRSTNAME, FAMILYNAME
+    `
+  }),
+  responseBuilder: ({ res, data }) => res.status(200).json(data)
 });
-
 
 // 6. Get assigned patients for a student
 app.get("/student_assignments/:studentId", cache("10 minutes"), auth, async (req, res) => {
@@ -2281,98 +2236,41 @@ app.post("/login", async (req, res) => {
 }
 });
 
-// ======================================================
-// 25. Get all doctors (Simple + Clean + Cached)
-// ======================================================
-app.get("/doctors", cache("30 seconds"), auth, async (req, res) => {
-  let connection;
 
-  // Pagination
-  const page = parseInt(req.query.page || "1");
-  const limit = parseInt(req.query.limit || "200");
-  const offset = (page - 1) * limit;
 
-  try {
-    connection = await getOracleConnection();
 
-    // SQL with ROW_NUMBER for pagination
-    const sql = `
-      SELECT *
-      FROM (
-        SELECT
-          u.USER_ID,
-          u.FULL_NAME,
-          u.USERNAME,
-          u.EMAIL,
-          u.ROLE,
-          u.IS_ACTIVE,
-          u.IS_DEAN,
-          u.CREATED_AT,
-          d.DOCTOR_TYPE,
-          d.IS_ACTIVE as DOCTOR_ACTIVE,
-          DBMS_LOB.SUBSTR(d.ALLOWED_FEATURES, 4000, 1) as ALLOWED_FEATURES,
-          ROW_NUMBER() OVER (ORDER BY u.FULL_NAME) AS RN
-        FROM DOCTORS d
-        JOIN USERS u ON u.USER_ID = TO_CHAR(d.DOCTOR_ID)
-      )
-      WHERE RN BETWEEN :startRow AND :endRow
-    `;
 
-    const binds = {
-      startRow: offset + 1,
-      endRow: offset + limit
-    };
-
-    const result = await connection.execute(sql, binds, {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
-
-    const doctors = result.rows.map((row) => {
-      let allowedFeatures = [];
-
-      try {
-        if (row.ALLOWED_FEATURES && row.ALLOWED_FEATURES.trim() !== "") {
-          allowedFeatures = JSON.parse(row.ALLOWED_FEATURES);
-        }
-      } catch {
-        allowedFeatures = [];
-      }
-
-      return {
-        id: row.USER_ID,
-        USER_ID: row.USER_ID,
-        fullName: row.FULL_NAME,
-        username: row.USERNAME,
-        email: row.EMAIL,
-        role: row.ROLE,
-        isActive: row.IS_ACTIVE,
-        isDean: row.IS_DEAN,
-        createdAt: row.CREATED_AT,
-        doctorType: row.DOCTOR_TYPE || "طبيب عام",
-        allowedFeatures,
-        DOCTOR_TYPE: row.DOCTOR_TYPE || "طبيب عام",
-        DOCTOR_ACTIVE: row.DOCTOR_ACTIVE,
-      };
-    });
-
-    return res.status(200).json({
-      page,
-      limit,
-      count: doctors.length,
-      data: doctors
-    });
-
-  } catch (err) {
-    console.error("❌ Error fetching doctors:", err);
-    return res.status(500).json({
-      message: "❌ Error fetching doctors",
-      error: err.message
-    });
-  } finally {
-    if (connection) await connection.close();
-  }
+// 25. Get all doctors - IMPROVED
+registerPaginatedCacheRoute({
+  path: "/doctors",
+  cacheDuration: "30 seconds",
+  paginationOptions: { defaultLimit: 50, maxLimit: 500 },
+  getSql: () => ({
+    sql: `
+      SELECT 
+        u.*,
+        DBMS_LOB.SUBSTR(d.ALLOWED_FEATURES, 4000, 1) as ALLOWED_FEATURES,
+        d.DOCTOR_TYPE,
+        d.IS_ACTIVE
+      FROM DOCTORS d 
+      JOIN USERS u ON u.USER_ID = TO_CHAR(d.DOCTOR_ID)
+      ORDER BY u.FULL_NAME
+    `
+  }),
+  formatRow: (row) => {
+    const normalized = normalizeDoctorRow(row);
+    let doctorType = "طبيب عام";
+    if (row.DOCTOR_TYPE) {
+      doctorType = row.DOCTOR_TYPE;
+    } else if (row.ROLE) {
+      doctorType = row.ROLE;
+    }
+    normalized.type = doctorType;
+    normalized.DOCTOR_TYPE = doctorType;
+    return normalized;
+  },
+  responseBuilder: ({ res, data }) => res.status(200).json(data)
 });
-
 
 // 26. Get single doctor with features - FIXED VERSION
 app.get("/doctors/:id", cache("10 minutes"), auth, async (req, res) => {
