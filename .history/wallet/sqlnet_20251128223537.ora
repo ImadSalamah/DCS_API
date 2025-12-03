@@ -1,0 +1,2 @@
+WALLET_LOCATION = (SOURCE = (METHOD = file) (METHOD_DATA = (DIRECTORY="/Users/macbook/Documents/API/wallet/Wallet_DCSAAUJ-2")))
+SSL_SERVER_DN_MATCH=yes
