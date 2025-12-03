@@ -633,7 +633,7 @@ app.get('/doctors/simple/:id', async (req, res) => {
 // ======================================================
 // 4. Get all students (Pagination + Cache)
 // ======================================================
-لهف
+
 app.get("/students", cache("5 seconds"), async (req, res) => {
   let connection;
 

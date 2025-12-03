@@ -630,59 +630,39 @@ app.get('/doctors/simple/:id', async (req, res) => {
   }
 });
 
-// ======================================================
-// 4. Get all students (Pagination + Cache)
-// ======================================================
-لهف
-app.get("/students", cache("5 seconds"), async (req, res) => {
+// 4. Get all students
+app.get("/students", async (req, res) => {
   let connection;
-
-  // 🟦 1) Read page & limit from query
-  const page = parseInt(req.query.page || "1");   // default page 1
-  const limit = parseInt(req.query.limit || "200"); // default 200 rows
-  const offset = (page - 1) * limit;
-
   try {
     connection = await getOracleConnection();
 
-    // 🟦 2) Pagination Query using ROW_NUMBER()
     const result = await connection.execute(
-      `
-      SELECT *
-      FROM (
-        SELECT 
-          u.USER_ID,
-          u.FULL_NAME,
-          u.USERNAME,
-          u.EMAIL,
-          u.ROLE,
-          u.IS_ACTIVE,
-          u.IS_DEAN,
-          u.CREATED_AT,
-          s.STUDENT_UNIVERSITY_ID,
-          s.STUDY_YEAR,
-          ROW_NUMBER() OVER (ORDER BY u.FULL_NAME) AS RN
-        FROM USERS u
-        LEFT JOIN STUDENTS s ON u.USER_ID = s.USER_ID
-        WHERE u.ROLE LIKE '%student%' OR u.ROLE LIKE '%طالب%'
-      )
-      WHERE RN BETWEEN :startRow AND :endRow
-      `,
-      {
-        startRow: offset + 1,
-        endRow: offset + limit
-      },
+      `SELECT 
+        u.USER_ID as USER_ID,
+        u.FULL_NAME as FULL_NAME,
+        u.USERNAME as USERNAME,
+        u.EMAIL as EMAIL,
+        u.ROLE as ROLE,
+        u.IS_ACTIVE as IS_ACTIVE,
+        u.IS_DEAN as IS_DEAN,
+        u.CREATED_AT as CREATED_AT,
+        s.STUDENT_UNIVERSITY_ID as STUDENT_UNIVERSITY_ID,
+        s.STUDY_YEAR as STUDY_YEAR
+       FROM USERS u
+       LEFT JOIN STUDENTS s ON u.USER_ID = s.USER_ID
+       WHERE u.ROLE LIKE '%student%' OR u.ROLE LIKE '%طالب%'
+       ORDER BY u.FULL_NAME`,
+      [],
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
-    // 🟦 3) Format the data
     const students = result.rows.map(student => {
       const fullName = student.FULL_NAME || "";
       const [firstName = ""] = fullName.split(" ");
 
       return {
-        USER_ID: student.USER_ID,
-        id: student.USER_ID,
+        USER_ID: student.USER_ID,  // ← المفتاح الأساسي
+        id: student.USER_ID,       // ← alias اختياري
         firstName,
         fatherName: "",
         grandfatherName: "",
@@ -700,13 +680,7 @@ app.get("/students", cache("5 seconds"), async (req, res) => {
       };
     });
 
-    // 🟦 4) Send response
-    res.status(200).json({
-      page,
-      limit,
-      count: students.length,
-      data: students
-    });
+    res.status(200).json(students);
 
   } catch (err) {
     console.error("❌ Error fetching students:", err);
@@ -718,7 +692,6 @@ app.get("/students", cache("5 seconds"), async (req, res) => {
     if (connection) await connection.close();
   }
 });
-
 
 // 5. Lookup student by university number (used by secretary)
 app.get("/students/by-university-id/:uniId", async (req, res) => {
