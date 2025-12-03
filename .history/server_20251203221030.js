@@ -165,7 +165,7 @@ function defaultPaginatedResponse({ res, data = [], limit, page }) {
 
 function registerPaginatedCacheRoute({
   path,
-  cacheDuration = "10 seconds",
+  cacheDuration = "5 seconds",
   paginationOptions = {},
   getSql,
   formatRow = row => row,
