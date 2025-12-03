@@ -77,7 +77,7 @@ global.oraclePool = await oracledb.createPool({
   walletPassword: process.env.DB_WALLET_PASSWORD,
 
   poolMin: 1,        // أقل عدد (لا ترفعها على Render)
-  poolMax: 25,       // 10 كويس ومش بخنّق الذاكرة
+  poolMax: 2,       // 10 كويس ومش بخنّق الذاكرة
   poolIncrement: 1,  // يزيد connection وحدة
   poolTimeout: 60,   // يغلق Connections الخاملة لتقليل الضغط
 });
