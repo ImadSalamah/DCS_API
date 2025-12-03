@@ -286,6 +286,15 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const PUBLIC_PATHS = new Set(["/login"]);
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS" || PUBLIC_PATHS.has(req.path)) {
+    return next();
+  }
+  return auth(req, res, next);
+});
+
+
 apicache.options({
   appendKey: false, 
   jsonp: false, 
@@ -5788,7 +5797,7 @@ connection = await getOracleConnection();
 });
 
 // 85. Check if ID exists in PATIENTS table
-app.get("/patients/check-id/:idNumber", cache("10 minutes"), auth, async (req, res) => {
+app.get("/patients/check-id/:idNumber", cache("10 minutes"), async (req, res) => {
   const { idNumber } = req.params;
 
   let connection;

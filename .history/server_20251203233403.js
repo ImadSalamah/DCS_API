@@ -286,6 +286,15 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const PUBLIC_PATHS = new Set(["/login"]);
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS" || PUBLIC_PATHS.has(req.path)) {
+    return next();
+  }
+  return auth(req, res, next);
+});
+
+
 apicache.options({
   appendKey: false, 
   jsonp: false, 
@@ -5270,7 +5279,7 @@ app.delete('/clear_all_assignments', async (req, res) => {
 });
 
 // 77. Get students assigned to a patient
-app.get('/patient_assignments/:patientId', cache("10 minutes"), auth, async (req, res) => {
+app.get('/patient_assignments/:patientId', cache("10 minutes"), async (req, res) => {
   const { patientId } = req.params;
 
   let connection;
@@ -5332,7 +5341,7 @@ app.delete('/remove_specific_assignment/:patientId/:studentId', async (req, res)
 
 
 // 79. GET /xray_custom_report   
-app.get('/xray_custom_report', cache("10 minutes"), auth, async (req, res) => {
+app.get('/xray_custom_report', cache("10 minutes"), async (req, res) => {
   let connection;
   try {
     const { startDate, endDate } = req.query;
@@ -5385,7 +5394,7 @@ app.get('/xray_custom_report', cache("10 minutes"), auth, async (req, res) => {
 });
 
 // 80. Get student examinations - NUCLEAR CIRCULAR REFERENCE FIX
-app.get("/student-examinations/:studentId", cache("10 minutes"), auth, async (req, res) => {
+app.get("/student-examinations/:studentId", cache("10 minutes"), async (req, res) => {
   let connection;
   try {
     const { studentId } = req.params;
@@ -5556,7 +5565,7 @@ connection = await getOracleConnection();
 });
 
 // 81. Get all patients with full data including images
-app.get("/all-patients", cache("10 minutes"), auth, async (req, res) => {
+app.get("/all-patients", cache("10 minutes"), async (req, res) => {
   let connection;
   try {
 connection = await getOracleConnection();
@@ -5698,7 +5707,7 @@ connection = await getOracleConnection();
 });
 
 // 84. Get full patient details by ID
-app.get("/patients-full/:id", cache("10 minutes"), auth, async (req, res) => {
+app.get("/patients-full/:id", cache("10 minutes"), async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
@@ -5788,7 +5797,7 @@ connection = await getOracleConnection();
 });
 
 // 85. Check if ID exists in PATIENTS table
-app.get("/patients/check-id/:idNumber", cache("10 minutes"), auth, async (req, res) => {
+app.get("/patients/check-id/:idNumber", cache("10 minutes"), async (req, res) => {
   const { idNumber } = req.params;
 
   let connection;

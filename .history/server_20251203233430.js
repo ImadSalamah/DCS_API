@@ -286,6 +286,15 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+const PUBLIC_PATHS = new Set(["/login"]);
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS" || PUBLIC_PATHS.has(req.path)) {
+    return next();
+  }
+  return auth(req, res, next);
+});
+
+
 apicache.options({
   appendKey: false, 
   jsonp: false, 
