@@ -5779,7 +5779,7 @@ connection = await getOracleConnection();
 });
 
 // 85. Check if ID exists in PATIENTS table
-app.get("/patients/check-id/:idNumber", cache("5 minutes"), async (req, res) => {
+app.get("/patients/check-id/:idNumber", async (req, res) => {
   const { idNumber } = req.params;
 
   let connection;
