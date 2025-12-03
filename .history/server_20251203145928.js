@@ -41,28 +41,28 @@ const ORACLE_PASSWORD = process.env.DB_PASS;
 //     (security=(ssl_server_dn_match=yes))
 // )`;
 
-// async function getOracleConnection() {
-//   return await oracledb.getConnection({
-//     user: ORACLE_USER,
-//     password: ORACLE_PASSWORD,
-//    // connectString: CONNECT_STRING,
-//    connectString: process.env.DB_CONNECT,
+async function getOracleConnection() {
+  return await oracledb.getConnection({
+    user: ORACLE_USER,
+    password: ORACLE_PASSWORD,
+   // connectString: CONNECT_STRING,
+   connectString: process.env.DB_CONNECT,
 
-//    // configDir: "/Users/macbook/Documents/API/wallet",
-//    // configDir: "/home/opc/API/wallet",
+   // configDir: "/Users/macbook/Documents/API/wallet",
+   // configDir: "/home/opc/API/wallet",
     
-//    // walletLocation: "/Users/macbook/Documents/API/wallet",
-//     // walletLocation: "/home/opc/API/wallet",
-//       walletLocation: "./wallet",
+   // walletLocation: "/Users/macbook/Documents/API/wallet",
+    // walletLocation: "/home/opc/API/wallet",
+      walletLocation: "./wallet",
     
-//     //walletPassword: "Emad@65842108"
-//      walletPassword: process.env.DB_WALLET_PASSWORD
-//   });
-// }
+    //walletPassword: "Emad@65842108"
+     walletPassword: process.env.DB_WALLET_PASSWORD
+  });
+}
 
 
 // =============================================
-// ORACLE POOL SYSTEM (new) — replace old connection!
+// ORACLE POOL (New) — keeps same function name
 // =============================================
 
 async function initOraclePool() {
@@ -87,16 +87,6 @@ async function initOraclePool() {
     throw err;
   }
 }
-
-async function getOracleConnection() {
-  if (!global.oraclePool) {
-    console.warn("⚠️ Pool not initialized — initializing...");
-    await initOraclePool();
-  }
-
-  return await global.oraclePool.getConnection();
-}
-
 
 
 // ======================================================

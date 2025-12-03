@@ -62,7 +62,7 @@ const ORACLE_PASSWORD = process.env.DB_PASS;
 
 
 // =============================================
-// ORACLE POOL SYSTEM (new) — replace old connection!
+// ORACLE POOL (New) — keeps same function name
 // =============================================
 
 async function initOraclePool() {
@@ -87,16 +87,6 @@ async function initOraclePool() {
     throw err;
   }
 }
-
-async function getOracleConnection() {
-  if (!global.oraclePool) {
-    console.warn("⚠️ Pool not initialized — initializing...");
-    await initOraclePool();
-  }
-
-  return await global.oraclePool.getConnection();
-}
-
 
 
 // ======================================================
