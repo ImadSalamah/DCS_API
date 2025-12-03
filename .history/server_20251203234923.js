@@ -164,6 +164,40 @@ function defaultPaginatedResponse({ res, data = [], limit, page }) {
 }
 
 
+{
+  const { defaultLimit = 50, maxLimit = 500 } = paginationOptions;
+
+  app.get(path, cache(cacheDuration), ...middlewares, async (req, res) => {
+    let connection;
+    const { limit, offset } = getPagination(req, defaultLimit, maxLimit);
+    const pagination = buildPaginationClause(limit, offset);
+    try {
+      connection = await getOracleConnection();
+      const { sql, binds = {} } = getSql(req);
+      const finalSql = `${sql}${pagination.clause}`;
+      const finalBinds = { ...binds, ...pagination.binds };
+
+      const result = await connection.execute(finalSql, finalBinds, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      });
+
+      const rows = result.rows || [];
+      const data = rows.map(formatRow);
+      const page = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+
+      return responseBuilder({ req, res, rows, data, limit, offset, page });
+    } catch (err) {
+      console.error(`❌ Error fetching ${path}:`, err);
+      return res.status(500).json({
+        message: `❌ Error fetching ${path}`,
+        error: err.message
+      });
+    } finally {
+      if (connection) await connection.close();
+    }
+  });
+}
+
 function normalizeDoctorRow(row) {
   const safeRow = {};
 
@@ -492,7 +526,7 @@ app.get('/test-db', async (req, res) => {
 
 
 // 1. Save examination data
-app.post("/examinations", cache("10 minutes"),auth, async (req, res) => {
+app.post("/examinations", cache(),auth, async (req, res) => {
   const {
     exam_id,
     patient_uid,

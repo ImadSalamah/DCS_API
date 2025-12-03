@@ -164,6 +164,8 @@ function defaultPaginatedResponse({ res, data = [], limit, page }) {
 }
 
 
+
+
 function normalizeDoctorRow(row) {
   const safeRow = {};
 
@@ -492,7 +494,7 @@ app.get('/test-db', async (req, res) => {
 
 
 // 1. Save examination data
-app.post("/examinations", cache("10 minutes"),auth, async (req, res) => {
+app.post("/examinations", auth, async (req, res) => {
   const {
     exam_id,
     patient_uid,
