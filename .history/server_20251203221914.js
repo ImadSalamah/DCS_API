@@ -772,7 +772,7 @@ app.get('/doctors/simple/:id', cache("10 minutes"),async (req, res) => {
 // ======================================================
 // 4. Get all students (Pagination + Cache)
 // ======================================================
-app.get("/students", cache("20 seconds"), async (req, res) => {
+app.get("/students", cache("3 seconds"), async (req, res) => {
   let connection;
 
   // 🟦 1) Read page & limit from query
