@@ -6048,34 +6048,3 @@ app.put("/patients/:patientId", async (req, res) => {
 // }
 
 // startServer();
-
-
-// ======================================================
-//  SERVER START WITH ORACLE POOL
-// ======================================================
-
-async function startServer() {
-  try {
-    console.log("Initializing Oracle Connection Pool...");
-
-    // 1) Start the POOL
-    await initOraclePool();  // <-- أهم سطر
-
-    // 2) Test connection from the pool
-    const conn = await getOracleConnection();
-    const result = await conn.execute("SELECT SYSDATE FROM DUAL");
-    console.log("🔥 Oracle DB Test OK:", result.rows);
-    await conn.close();
-
-    // 3) Start server normally
-    app.listen(PORT, () => {
-      console.log(`🚀 API running on http://localhost:${PORT}`);
-    });
-
-  } catch (err) {
-    console.error("❌ Server failed to start:", err);
-    process.exit(1);
-  }
-}
-
-startServer();

@@ -60,38 +60,6 @@ const ORACLE_PASSWORD = process.env.DB_PASS;
 //   });
 // }
 
-
-// =============================================
-// ORACLE POOL (New) — keeps same function name
-// =============================================
-let oraclePool;
-
-async function initOraclePool() {
-  try {
-    oraclePool = await oracledb.createPool({
-      user: ORACLE_USER,
-      password: ORACLE_PASSWORD,
-      connectString: process.env.DB_CONNECT,
-      walletLocation: "./wallet",
-      walletPassword: process.env.DB_WALLET_PASSWORD,
-
-      // Pool settings
-      poolMin: 3,
-      poolMax: 15,
-      poolIncrement: 1,
-      poolTimeout: 60,
-      queueMax: 100,
-      queueTimeout: 60000
-    });
-
-    console.log("🔥 Oracle Connection Pool initialized");
-  } catch (err) {
-    console.error("❌ Failed to initialize Oracle Pool:", err);
-    process.exit(1);
-  }
-}
-
-
 // ======================================================
 
 function getPagination(req, defaultLimit = 50, maxLimit = 500) {
@@ -6022,52 +5990,21 @@ app.put("/patients/:patientId", async (req, res) => {
 });
 
 
-// // ======================================================
-// //  SERVER START WITH ORACLE CONNECTION
-// // ======================================================
-
-// async function startServer() {
-//   try {
-//     console.log("Starting Oracle connection test...");
-
-//     // اختبار الاتصال أولاً
-//     const conn = await getOracleConnection();
-//     const result = await conn.execute("SELECT SYSDATE FROM DUAL");
-//     console.log("DB Test OK:", result.rows);
-//     await conn.close();
-
-//     // تشغيل السيرفر
-//     app.listen(PORT, () => {
-//       console.log(`🚀 API running on http://localhost:${PORT}`);
-//     });
-
-//   } catch (err) {
-//     console.error("❌ Server failed to start:", err);
-//     process.exit(1);
-//   }
-// }
-
-// startServer();
-
-
 // ======================================================
-//  SERVER START WITH ORACLE POOL
+//  SERVER START WITH ORACLE CONNECTION
 // ======================================================
 
 async function startServer() {
   try {
-    console.log("Initializing Oracle Connection Pool...");
+    console.log("Starting Oracle connection test...");
 
-    // 1) Start the POOL
-    await initOraclePool();  // <-- أهم سطر
-
-    // 2) Test connection from the pool
+    // اختبار الاتصال أولاً
     const conn = await getOracleConnection();
     const result = await conn.execute("SELECT SYSDATE FROM DUAL");
-    console.log("🔥 Oracle DB Test OK:", result.rows);
+    console.log("DB Test OK:", result.rows);
     await conn.close();
 
-    // 3) Start server normally
+    // تشغيل السيرفر
     app.listen(PORT, () => {
       console.log(`🚀 API running on http://localhost:${PORT}`);
     });
