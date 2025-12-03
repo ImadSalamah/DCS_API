@@ -79,8 +79,7 @@ global.oraclePool = await oracledb.createPool({
   poolMin: 1,        // أقل عدد (لا ترفعها على Render)
   poolMax: 10,       // 10 كويس ومش بخنّق الذاكرة
   poolIncrement: 1,  // يزيد connection وحدة
-  poolTimeout: 60,   // يغلق Connections الخاملة لتقليل الضغط
-});
+  poolTimeout: 60,   // يغلق Connections الخاملة لتقليل الضغط});
 
 
     console.log("🔥 Oracle Connection Pool initialized");
