@@ -112,6 +112,94 @@ function parseDoubleEncodedJSON(str) {
   }
 }
 
+function defaultPaginatedResponse({ res, data = [], limit, page }) {
+  return res.status(200).json({
+    page,
+    limit,
+    count: data.length,
+    data
+  });
+}
+
+function registerPaginatedCacheRoute({
+  path,
+  cacheDuration = "5 seconds",
+  paginationOptions = {},
+  getSql,
+  formatRow = row => row,
+  responseBuilder = defaultPaginatedResponse
+}) {
+  const { defaultLimit = 50, maxLimit = 500 } = paginationOptions;
+
+  app.get(path, cache(cacheDuration), async (req, res) => {
+    let connection;
+    const { limit, offset } = getPagination(req, defaultLimit, maxLimit);
+    const pagination = buildPaginationClause(limit, offset);
+    try {
+      connection = await getOracleConnection();
+      const { sql, binds = {} } = getSql(req);
+      const finalSql = `${sql}${pagination.clause}`;
+      const finalBinds = { ...binds, ...pagination.binds };
+
+      const result = await connection.execute(finalSql, finalBinds, {
+        outFormat: oracledb.OUT_FORMAT_OBJECT
+      });
+
+      const rows = result.rows || [];
+      const data = rows.map(formatRow);
+      const page = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+
+      return responseBuilder({ req, res, rows, data, limit, offset, page });
+    } catch (err) {
+      console.error(`❌ Error fetching ${path}:`, err);
+      return res.status(500).json({
+        message: `❌ Error fetching ${path}`,
+        error: err.message
+      });
+    } finally {
+      if (connection) await connection.close();
+    }
+  });
+}
+
+function normalizeDoctorRow(row) {
+  const safeRow = {};
+
+  Object.keys(row).forEach((key) => {
+    if (key === "IMAGE" || key === "ID_IMAGE") {
+      safeRow[key] = typeof row[key] === "string" ? row[key] : "";
+    } else if (key === "ALLOWED_FEATURES") {
+      try {
+        const featuresValue = row[key];
+        if (featuresValue && typeof featuresValue === "string" && featuresValue.trim() !== "") {
+          safeRow[key] = JSON.parse(featuresValue);
+        } else {
+          safeRow[key] = [];
+        }
+      } catch (e) {
+        console.error(
+          `❌ Error parsing ALLOWED_FEATURES for doctor ${row.FULL_NAME || row.NAME || row.USERNAME}:`,
+          e
+        );
+        safeRow[key] = [];
+      }
+    } else {
+      safeRow[key] = row[key];
+    }
+  });
+
+  const nameFromDb = row.FULL_NAME || row.NAME || row.FIRST_NAME || row.USERNAME || "";
+  safeRow.name = nameFromDb;
+  safeRow.fullName = row.FULL_NAME || nameFromDb;
+  safeRow.uid = row.USER_ID;
+  safeRow.id = row.USER_ID;
+  safeRow.allowedFeatures = Array.isArray(safeRow.ALLOWED_FEATURES)
+    ? safeRow.ALLOWED_FEATURES
+    : [];
+
+  return safeRow;
+}
+
 // ======================================================
 
 function auth(req, res, next) {
@@ -768,16 +856,13 @@ app.get("/students/by-university-id/:uniId", async (req, res) => {
 });
 
 // 6. Get all patients
-app.get("/patients", cache("30 seconds"), async (req, res) => {
-  let connection;
-  try {
-    connection = await getOracleConnection(); // 👈 تعديل فقط
-
-    const { limit, offset } = getPagination(req, 0, 500);
-    const pagination = buildPaginationClause(limit, offset);
-
-    const result = await connection.execute(
-      `SELECT 
+registerPaginatedCacheRoute({
+  path: "/patients",
+  cacheDuration: "30 seconds",
+  paginationOptions: { defaultLimit: 0, maxLimit: 500 },
+  getSql: () => ({
+    sql: `
+      SELECT 
         PATIENT_UID as id,
         FIRSTNAME as firstName,
         FATHERNAME as fatherName,
@@ -788,22 +873,12 @@ app.get("/patients", cache("30 seconds"), async (req, res) => {
         PHONE as phone,
         MEDICAL_RECORD_NO as medicalRecordNo,
         STATUS as status
-       FROM PATIENTS 
-       WHERE STATUS = 'active' OR STATUS IS NULL OR STATUS = 'EXAMINED'
-       ORDER BY FIRSTNAME, FAMILYNAME${pagination.clause}`,
-      { ...pagination.binds },
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error("❌ Error fetching patients:", err);
-    res.status(500).json({ 
-      message: "❌ Error fetching patients", 
-      error: err.message 
-    });
-  } finally {
-    if (connection) await connection.close();
-  }
+      FROM PATIENTS 
+      WHERE STATUS = 'active' OR STATUS IS NULL OR STATUS = 'EXAMINED'
+      ORDER BY FIRSTNAME, FAMILYNAME
+    `
+  }),
+  responseBuilder: ({ res, data }) => res.status(200).json(data)
 });
 
 // 6. Get assigned patients for a student
@@ -2075,13 +2150,12 @@ app.post("/login", async (req, res) => {
 
 
 // 25. Get all doctors - IMPROVED
-app.get("/doctors", async (req, res) => {
-  let connection;
-  try {
-    connection = await getOracleConnection();
-
-    const result = await connection.execute(
-      `
+registerPaginatedCacheRoute({
+  path: "/doctors",
+  cacheDuration: "30 seconds",
+  paginationOptions: { defaultLimit: 50, maxLimit: 500 },
+  getSql: () => ({
+    sql: `
       SELECT 
         u.*,
         DBMS_LOB.SUBSTR(d.ALLOWED_FEATURES, 4000, 1) as ALLOWED_FEATURES,
@@ -2089,77 +2163,22 @@ app.get("/doctors", async (req, res) => {
         d.IS_ACTIVE
       FROM DOCTORS d 
       JOIN USERS u ON u.USER_ID = TO_CHAR(d.DOCTOR_ID)
-      `,
-      [],
-      { outFormat: oracledb.OUT_FORMAT_OBJECT }
-    );
-
-    const doctors = (result.rows || []).map((row) => {
-      const safeRow = {};
-
-      Object.keys(row).forEach((key) => {
-        if (key === "IMAGE" || key === "ID_IMAGE") {
-          safeRow[key] = typeof row[key] === "string" ? row[key] : "";
-        } else if (key === "ALLOWED_FEATURES") {
-          try {
-            const featuresValue = row[key];
-            if (
-              featuresValue &&
-              typeof featuresValue === "string" &&
-              featuresValue.trim() !== ""
-            ) {
-              safeRow[key] = JSON.parse(featuresValue);
-            } else {
-              safeRow[key] = [];
-            }
-          } catch (e) {
-            console.error(
-              `❌ خطأ في تحويل ALLOWED_FEATURES للطبيب ${row.FULL_NAME}:`,
-              e
-            );
-            safeRow[key] = [];
-          }
-        } else {
-          safeRow[key] = row[key];
-        }
-      });
-
-      const nameFromDb =
-        row.FULL_NAME ||
-        row.NAME ||
-        row.FIRST_NAME ||
-        row.USERNAME ||
-        "";
-      safeRow.name = nameFromDb;
-      safeRow.fullName = row.FULL_NAME || nameFromDb;
-      safeRow.uid = row.USER_ID;
-      safeRow.id = row.USER_ID;
-      safeRow.allowedFeatures = Array.isArray(safeRow.ALLOWED_FEATURES)
-        ? safeRow.ALLOWED_FEATURES
-        : [];
-
-      let doctorType = "طبيب عام";
-      if (row.DOCTOR_TYPE) {
-        doctorType = row.DOCTOR_TYPE;
-      } else if (row.ROLE) {
-        doctorType = row.ROLE;
-      }
-      safeRow.type = doctorType;
-      safeRow.DOCTOR_TYPE = doctorType;
-
-      return safeRow;
-    });
-
-    return res.status(200).json(doctors);
-  } catch (err) {
-    console.error("❌ Error fetching doctors:", err);
-    return res.status(500).json({
-      message: "❌ Error fetching doctors",
-      error: err.message,
-    });
-  } finally {
-    if (connection) await connection.close();
-  }
+      ORDER BY u.FULL_NAME
+    `
+  }),
+  formatRow: (row) => {
+    const normalized = normalizeDoctorRow(row);
+    let doctorType = "طبيب عام";
+    if (row.DOCTOR_TYPE) {
+      doctorType = row.DOCTOR_TYPE;
+    } else if (row.ROLE) {
+      doctorType = row.ROLE;
+    }
+    normalized.type = doctorType;
+    normalized.DOCTOR_TYPE = doctorType;
+    return normalized;
+  },
+  responseBuilder: ({ res, data }) => res.status(200).json(data)
 });
 
 // 26. Get single doctor with features - FIXED VERSION
