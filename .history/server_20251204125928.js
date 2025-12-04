@@ -765,7 +765,7 @@ app.get("/students", cache("2 minutes"), auth, async (req, res) => {
         s.STUDY_YEAR
       FROM USERS u
       LEFT JOIN STUDENTS s ON u.USER_ID = s.USER_ID
-      WHERE u.ROLE = 'dental_student' OR u.ROLE = 'طالب'
+      WHERE u.ROLE = 'student' OR u.ROLE = 'طالب'
       ORDER BY u.FULL_NAME
       OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
       `,
