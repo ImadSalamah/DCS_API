@@ -3547,7 +3547,7 @@ app.get("/examination-details/:examId", cache("10 minutes"), auth, async (req, r
 });
 
 //47. Get all examinations with full data - FINAL FIXED VERSION
-app.get("/all-examinations-full", auth, async (req, res) => {
+app.get("/all-examinations-full", , auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
