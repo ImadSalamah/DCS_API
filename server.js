@@ -2227,11 +2227,64 @@ app.post("/login", async (req, res) => {
   });
 } finally {
   if (connection) await connection.close();
-}
+  }
+});
+
+// 25. Password reset for guests (available without login)
+app.post("/password-reset", async (req, res) => {
+  const parsedBody = parseJsonBody(req, res);
+  if (parsedBody === null) return;
+
+  const emailRaw = parsedBody.email || parsedBody.username;
+  const newPasswordRaw = parsedBody.newPassword || parsedBody.password;
+
+  if (!emailRaw || !newPasswordRaw) {
+    return res.status(400).json({ message: "Email and new password are required" });
+  }
+
+  const email = emailRaw.toString().toLowerCase().trim();
+  const newPassword = newPasswordRaw.toString();
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
+
+  let connection;
+  try {
+    connection = await getOracleConnection();
+    const result = await connection.execute(
+      `SELECT USER_ID FROM USERS WHERE LOWER(email) = :email OR LOWER(username) = :email`,
+      { email },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+
+    if (!result.rows || result.rows.length === 0) {
+      return res.status(404).json({ message: "No user found" });
+    }
+
+    const userId = result.rows[0].USER_ID;
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await connection.execute(
+      `UPDATE USERS SET PASSWORD_HASH = :passwordHash WHERE USER_ID = :userId`,
+      { passwordHash, userId },
+      { autoCommit: true }
+    );
+
+    return res.status(200).json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("❌ Password reset error:", err);
+    return res.status(500).json({
+      message: "❌ Unable to reset password",
+      error: err.message
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
 });
 
 // ======================================================
-// 25. Get all doctors (Simple + Clean + Cached)
+// 26. Get all doctors (Simple + Clean + Cached)
 // ======================================================
 app.get("/doctors", cache("2 minutes"), auth, async (req, res) => {
   let connection;
