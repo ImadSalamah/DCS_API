@@ -1234,7 +1234,7 @@ app.get("/check-doctor/:id", cache("10 minutes"), auth, async (req, res) => {
 });
 
 // 12. Find patient by appointment ID
-app.get("/patients/by-appointment-id/:idnumber", auth, async (req, res) => {
+app.get("/patients/by-appointment-id/:idnumber", cache("10 minutes"), auth, async (req, res) => {
   const { idnumber } = req.params;
   let connection;
 
@@ -1265,7 +1265,7 @@ app.get("/patients/by-appointment-id/:idnumber", auth, async (req, res) => {
 });
 
 // 13. Get all pending users
-app.get("/pendingUsers",  auth, async (req, res) => {
+app.get("/pendingUsers", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection(); // FIXED
@@ -1573,7 +1573,7 @@ app.post("/updateUser", async (req, res) => {
 });
 
 // 19. Get all rejected users
-app.get("/rejectedUsers",  auth, async (req, res) => {
+app.get("/rejectedUsers", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection(); // FIXED
@@ -2848,7 +2848,7 @@ app.post("/appointments", async (req, res) => {
 });
 
 
-app.get("/appointments/count-by-year", auth, async (req, res) => {
+app.get("/appointments/count-by-year", cache("10 minutes"), auth, async (req, res) => {
   const { date, studyYear } = req.query;
 
   if (!date || !studyYear) {
@@ -2895,7 +2895,7 @@ app.get("/appointments/count-by-year", auth, async (req, res) => {
 });
 
 // 34. Get appointment count
-app.get("/appointments/count",  auth, async (req, res) => {
+app.get("/appointments/count", cache("10 minutes"), auth, async (req, res) => {
   const { date } = req.query;
 
   if (!date) {
@@ -2951,7 +2951,7 @@ app.get("/bookingSettings", cache("10 minutes"), auth, async (req, res) => {
 });
 
 // 36. Get all waiting list entries - ULTRA SAFE VERSION
-app.get("/waitingList",  auth, async (req, res) => {
+app.get("/waitingList", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
@@ -3224,7 +3224,7 @@ app.post("/patientExams", async (req, res) => {
 });
 
 // 41. Get all appointments
-app.get("/appointments",  auth, async (req, res) => {
+app.get("/appointments", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
     connection = await getOracleConnection();
