@@ -1454,6 +1454,9 @@ app.post("/approveUser", async (req, res) => {
 
     await connection.commit();
 
+    // Ensure the cached pending list is refreshed now that the user moved to Patients.
+    apicache.clear("/pendingUsers");
+
     res.json({
       message: "✅ User approved",
       patientUid,
@@ -1494,6 +1497,9 @@ app.post("/rejectUser", async (req, res) => {
     if (result.rowsAffected === 0) {
       return res.status(404).json({ message: "❌ User not found" });
     }
+
+    apicache.clear("/pendingUsers");
+    apicache.clear("/rejectedUsers");
 
     res.json({ message: "✅ User rejected" });
 
