@@ -2230,19 +2230,21 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// 25. Password reset for guests (available without login)
+// 25. Change password for guests (requires old password)
 app.post("/password-reset", async (req, res) => {
   const parsedBody = parseJsonBody(req, res);
   if (parsedBody === null) return;
 
-  const emailRaw = parsedBody.email || parsedBody.username;
+  const usernameRaw = parsedBody.username || parsedBody.email;
+  const oldPasswordRaw = parsedBody.oldPassword || parsedBody.currentPassword;
   const newPasswordRaw = parsedBody.newPassword || parsedBody.password;
 
-  if (!emailRaw || !newPasswordRaw) {
-    return res.status(400).json({ message: "Email and new password are required" });
+  if (!usernameRaw || !oldPasswordRaw || !newPasswordRaw) {
+    return res.status(400).json({ message: "Username, old password and new password are required" });
   }
 
-  const email = emailRaw.toString().toLowerCase().trim();
+  const username = usernameRaw.toString().toLowerCase().trim();
+  const oldPassword = oldPasswordRaw.toString();
   const newPassword = newPasswordRaw.toString();
 
   if (newPassword.length < 6) {
@@ -2253,8 +2255,8 @@ app.post("/password-reset", async (req, res) => {
   try {
     connection = await getOracleConnection();
     const result = await connection.execute(
-      `SELECT USER_ID FROM USERS WHERE LOWER(email) = :email OR LOWER(username) = :email`,
-      { email },
+      `SELECT USER_ID, PASSWORD_HASH FROM USERS WHERE LOWER(username) = :username OR LOWER(email) = :username`,
+      { username },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
@@ -2262,12 +2264,18 @@ app.post("/password-reset", async (req, res) => {
       return res.status(404).json({ message: "No user found" });
     }
 
-    const userId = result.rows[0].USER_ID;
+    const userRow = result.rows[0];
+    const passwordMatch = await bcrypt.compare(oldPassword, userRow.PASSWORD_HASH);
+
+    if (!passwordMatch) {
+      return res.status(401).json({ message: "Old password is incorrect" });
+    }
+
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
     await connection.execute(
       `UPDATE USERS SET PASSWORD_HASH = :passwordHash WHERE USER_ID = :userId`,
-      { passwordHash, userId },
+      { passwordHash, userId: userRow.USER_ID },
       { autoCommit: true }
     );
 
