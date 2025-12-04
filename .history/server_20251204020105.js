@@ -1645,7 +1645,7 @@ function parseJsonBody(req, res) {
 // ======================================================
 // 21. 🔐 Get all users (Admins only) - SIMPLE VERSION
 // ======================================================
-app.get("/users", cache("2 minutes"), auth, isAdmin, async (req, res) => {
+app.get("/users", cache("30 seconds"), auth, isAdmin, async (req, res) => {
   let connection;
 
   // Pagination
@@ -2233,7 +2233,7 @@ app.post("/login", async (req, res) => {
 // ======================================================
 // 25. Get all doctors (Simple + Clean + Cached)
 // ======================================================
-app.get("/doctors", cache("2 minutes"), auth, async (req, res) => {
+app.get("/doctors", cache("30 seconds"), auth, async (req, res) => {
   let connection;
 
   // Pagination

@@ -2233,7 +2233,7 @@ app.post("/login", async (req, res) => {
 // ======================================================
 // 25. Get all doctors (Simple + Clean + Cached)
 // ======================================================
-app.get("/doctors", cache("2 minutes"), auth, async (req, res) => {
+app.get("/doctors", cache("30 seconds"), auth, async (req, res) => {
   let connection;
 
   // Pagination
