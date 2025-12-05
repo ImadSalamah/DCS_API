@@ -5581,7 +5581,7 @@ app.get('/xray_custom_report', auth, async (req, res) => {
 });
 
 // 80. Get student examinations - NUCLEAR CIRCULAR REFERENCE FIX
-app.get("/student-examinations/:studentId", auth, async (req, res) => {
+app.get("/student-examinations/:studentId", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
     const { studentId } = req.params;
@@ -5752,7 +5752,7 @@ connection = await getOracleConnection();
 });
 
 // 81. Get all patients with full data including images
-app.get("/all-patients", auth, async (req, res) => {
+app.get("/all-patients", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
 connection = await getOracleConnection();

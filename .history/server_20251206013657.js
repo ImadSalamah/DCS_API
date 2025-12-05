@@ -5752,7 +5752,7 @@ connection = await getOracleConnection();
 });
 
 // 81. Get all patients with full data including images
-app.get("/all-patients", auth, async (req, res) => {
+app.get("/all-patients", cache("10 minutes"), auth, async (req, res) => {
   let connection;
   try {
 connection = await getOracleConnection();
