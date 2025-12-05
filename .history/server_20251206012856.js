@@ -4051,7 +4051,8 @@ app.post("/xray_requests", async (req, res) => {
 });
 
 // 52. Get x-ray requests (optional status filter)
-app.get("/xray_requests",auth, async (req, res) => {
+app.get("/xray_requests", 
+   auth, async (req, res) => {
   let connection;
 
   try {
