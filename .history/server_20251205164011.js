@@ -246,44 +246,21 @@ const limiter = rateLimit({
 app.use(limiter);
 
 apicache.options({
-  appendKey: false,
-  jsonp: false,
-  enabled: true,
+  appendKey: false, 
+  jsonp: false, 
+  enabled: true, 
   redisClient: false,
-  defaultDuration: "20 seconds",
+  defaultDuration: '20 seconds',
   statusCodes: {
-    include: [200],
-  },
+    include: [200]
+  }
 });
 
 // أهم خطوة ▼▼▼▼▼
 // إزالة query params من المفتاح
-apicache.options({
-  keyGenerator: (req, res) => req.originalUrl.split("?")[0],
+apicache.options({ 
+    keyGenerator: (req, res) => req.originalUrl.split('?')[0]
 });
-
-function clearPatientCaches(patientId, options = {}) {
-  const normalizedId = patientId ? String(patientId) : null;
-  const includeList = options.includeList !== false;
-
-  if (includeList) {
-    apicache.clear("/all-patients");
-  }
-
-  if (!normalizedId) {
-    return;
-  }
-
-  [
-    `/patients/${normalizedId}`,
-    `/patients-full/${normalizedId}`,
-    `/check-patient/${normalizedId}`,
-  ].forEach((path) => apicache.clear(path));
-}
-
-function clearUsersCache() {
-  apicache.clear("/users");
-}
 
 // ======================================================
 
@@ -1128,8 +1105,6 @@ app.put("/patients/:patientId/status", async (req, res) => {
       return res.status(404).json({ message: "❌ Patient not found" });
     }
 
-    clearPatientCaches(patientId);
-
     res.status(200).json({ 
       message: "✅ Patient status updated successfully",
       patientId,
@@ -1880,8 +1855,6 @@ app.post("/users", cache("10 minutes"), auth, isAdmin, async (req, res) => {
 
     await connection.commit();
 
-    clearUsersCache();
-
     return res.status(201).json({
       message: "✅ User added successfully",
       studentAdded: !!studentResult,
@@ -2130,8 +2103,6 @@ app
 
       await connection.commit();
 
-      clearUsersCache();
-
       return res.status(200).json({
         message: "✅ User updated successfully",
         updatedFields: updates,
@@ -2171,8 +2142,6 @@ app
       if (result.rowsAffected === 0) {
         return res.status(404).json({ message: "User not found" });
       }
-
-      clearUsersCache();
 
       return res.status(200).json({
         message: "✅ User deleted successfully",
@@ -5840,8 +5809,6 @@ connection = await getOracleConnection();
       return res.status(404).json({ message: "❌ Patient not found" });
     }
 
-    clearPatientCaches(patientId);
-
     res.status(200).json({ 
       message: "✅ ID image updated successfully",
       patientId: patientId
@@ -5879,8 +5846,6 @@ connection = await getOracleConnection();
     if (result.rowsAffected === 0) {
       return res.status(404).json({ message: "❌ Patient not found" });
     }
-
-    clearPatientCaches(patientId);
 
     res.status(200).json({ 
       message: "✅ IQRAR image updated successfully",
@@ -6121,8 +6086,6 @@ app.post("/patients", async (req, res) => {
 
     const result = await connection.execute(sql, bind, { autoCommit: true });
 
-    clearPatientCaches(patientUid);
-
     return res.status(201).json({
       message: "✅ تمت إضافة المريض بنجاح",
       patientUid,
@@ -6223,8 +6186,6 @@ app.put("/patients/:patientId", async (req, res) => {
     if (result.rowsAffected === 0) {
       return res.status(404).json({ message: "❌ Patient not found" });
     }
-
-    clearPatientCaches(patientId);
 
     return res.status(200).json({
       message: "✅ Patient data updated successfully",
