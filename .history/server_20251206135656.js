@@ -690,7 +690,7 @@ app.post("/screening", async (req, res) => {
 });
 
 //3.
-app.get('/doctors/simple/:id', auth ,async (req, res) => {
+app.get('/doctors/simple/:id', cache("10 minutes"),auth ,async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
@@ -2422,7 +2422,7 @@ app.get("/doctors", auth, async (req, res) => {
 
 
 // 26. Get single doctor with features - FIXED VERSION
-app.get("/doctors/:id",  auth, async (req, res) => {
+app.get("/doctors/:id", cache("10 minutes"), auth, async (req, res) => {
   const { id } = req.params;
   let connection;
   try {
@@ -2519,7 +2519,7 @@ app.get("/doctors/:id",  auth, async (req, res) => {
 });
 
 // 27. Get doctor type only
-app.get("/doctors/:id/type",  auth, async (req, res) => {
+app.get("/doctors/:id/type", cache("10 minutes"), auth, async (req, res) => {
   const { id } = req.params;
   let connection;
   try {

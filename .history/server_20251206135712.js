@@ -690,7 +690,7 @@ app.post("/screening", async (req, res) => {
 });
 
 //3.
-app.get('/doctors/simple/:id', auth ,async (req, res) => {
+app.get('/doctors/simple/:id', cache("10 minutes"),auth ,async (req, res) => {
   let connection;
   try {
     const { id } = req.params;
