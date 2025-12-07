@@ -154,6 +154,45 @@ function parseDoubleEncodedJSON(str) {
   }
 }
 
+function convertArabicDigits(value) {
+  if (!value || typeof value !== "string") return value;
+  const map = {
+    "٠": "0",
+    "١": "1",
+    "٢": "2",
+    "٣": "3",
+    "٤": "4",
+    "٥": "5",
+    "٦": "6",
+    "٧": "7",
+    "٨": "8",
+    "٩": "9"
+  };
+  return value.replace(/[٠-٩]/g, (digit) => map[digit] || digit);
+}
+
+function normalizeTimeString(value) {
+  if (!value || typeof value !== "string") return null;
+  let cleanValue = convertArabicDigits(value).trim();
+  const amMarker = /(\b[AP]M\b)|ص/i.test(cleanValue);
+  const pmMarker = /(\b[AP]M\b)|م/i.test(cleanValue);
+  cleanValue = cleanValue.replace(/[\u0621-\u064A]/g, ""); // remove Arabic letters
+  cleanValue = cleanValue.replace(/AM|PM/gi, "");
+  cleanValue = cleanValue.replace(/\s+/g, "");
+
+  const match = cleanValue.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (pmMarker && hour < 12) hour += 12;
+  if (amMarker && hour === 12) hour = 0;
+  if (hour >= 24) hour = hour % 24;
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 function defaultPaginatedResponse({ res, data = [], limit, page }) {
   return res.status(200).json({
     page,
@@ -3288,6 +3327,353 @@ app.get("/appointments",  auth, async (req, res) => {
   } catch (err) {
     console.error("❌ Error fetching appointments:", err);
     res.status(500).json({ message: "❌ Error fetching appointments", error: err.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// 44. Outpatient appointments: create
+app.post("/outpatientAppointments", auth, async (req, res) => {
+  const {
+    clinic,
+    date,
+    start,
+    end,
+    studentId,
+    studentEmail,
+    studentUniversityId,
+    patientUid,
+    patientName,
+    patientIdNumber,
+    patientPhone,
+    notes,
+    serial,
+    status
+  } = req.body;
+
+  if (
+    !clinic ||
+    !date ||
+    !start ||
+    !end ||
+    !studentId ||
+    !studentEmail ||
+    !patientUid ||
+    !patientName
+  ) {
+    return res.status(400).json({ message: "❌ Missing required outpatient fields" });
+  }
+
+  const appointmentDate = String(date || "").split("T")[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate)) {
+    return res.status(400).json({ message: "❌ Invalid appointment date" });
+  }
+
+  const startTime = normalizeTimeString(start);
+  const endTime = normalizeTimeString(end);
+
+  if (!startTime || !endTime) {
+    return res.status(400).json({ message: "❌ Invalid start or end time format" });
+  }
+
+  let connection;
+
+  try {
+    connection = await getOracleConnection();
+
+    const sql = `
+      INSERT INTO OUTPATIENT_APPOINTMENTS (
+        CLINIC, APPOINTMENT_DATE, START_TIME, END_TIME,
+        STUDENT_ID, STUDENT_EMAIL, STUDENT_UNIVERSITY_ID,
+        PATIENT_UID, PATIENT_NAME, PATIENT_ID_NUMBER, PATIENT_PHONE,
+        NOTES, SERIAL, STATUS, CREATED_AT, UPDATED_AT
+      ) VALUES (
+        :clinic,
+        TO_DATE(:appointmentDate, 'YYYY-MM-DD'),
+        TO_TIMESTAMP(:startTime, 'HH24:MI'),
+        TO_TIMESTAMP(:endTime, 'HH24:MI'),
+        :studentId,
+        :studentEmail,
+        :studentUniversityId,
+        :patientUid,
+        :patientName,
+        :patientIdNumber,
+        :patientPhone,
+        :notes,
+        :serial,
+        :status,
+        SYSTIMESTAMP,
+        SYSTIMESTAMP
+      )
+      RETURNING ID INTO :generatedId
+    `;
+
+    const binds = {
+      clinic,
+      appointmentDate,
+      startTime,
+      endTime,
+      studentId,
+      studentEmail,
+      studentUniversityId: studentUniversityId || null,
+      patientUid,
+      patientName,
+      patientIdNumber: patientIdNumber || null,
+      patientPhone: patientPhone || null,
+      notes: notes || "",
+      serial: serial || null,
+      status: status || "scheduled",
+      generatedId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER }
+    };
+
+    const result = await connection.execute(sql, binds, { autoCommit: true });
+    const createdId = Array.isArray(result.outBinds.generatedId)
+      ? result.outBinds.generatedId[0]
+      : result.outBinds.generatedId;
+
+    res.status(201).json({
+      message: "✅ Outpatient appointment created",
+      id: createdId
+    });
+  } catch (err) {
+    console.error("❌ Failed to create outpatient appointment:", err);
+    res.status(500).json({
+      message: "❌ Failed to create outpatient appointment",
+      error: err.message
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// 45. List outpatient appointments
+app.get("/outpatientAppointments", auth, async (req, res) => {
+  const { date, clinic, patientUid, studentId, status } = req.query;
+  const binds = {};
+  let query = `
+    SELECT
+      ID,
+      CLINIC,
+      TO_CHAR(APPOINTMENT_DATE, 'YYYY-MM-DD') AS APPOINTMENT_DATE,
+      TO_CHAR(START_TIME, 'HH24:MI') AS START_TIME,
+      TO_CHAR(END_TIME, 'HH24:MI') AS END_TIME,
+      STUDENT_ID,
+      STUDENT_EMAIL,
+      STUDENT_UNIVERSITY_ID,
+      PATIENT_UID,
+      PATIENT_NAME,
+      PATIENT_ID_NUMBER,
+      PATIENT_PHONE,
+      NOTES,
+      SERIAL,
+      STATUS,
+      TO_CHAR(CREATED_AT, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS CREATED_AT,
+      TO_CHAR(UPDATED_AT, 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS UPDATED_AT
+    FROM OUTPATIENT_APPOINTMENTS
+    WHERE 1 = 1
+  `;
+
+  if (date) {
+    const normalizedDate = String(date).split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+      binds.date = normalizedDate;
+      query += " AND TRUNC(APPOINTMENT_DATE) = TO_DATE(:date, 'YYYY-MM-DD')";
+    }
+  }
+
+  if (clinic) {
+    binds.clinic = clinic;
+    query += " AND CLINIC = :clinic";
+  }
+
+  if (patientUid) {
+    binds.patientUid = patientUid;
+    query += " AND PATIENT_UID = :patientUid";
+  }
+
+  if (studentId) {
+    binds.studentId = studentId;
+    query += " AND STUDENT_ID = :studentId";
+  }
+
+  if (status) {
+    binds.status = status;
+    query += " AND STATUS = :status";
+  }
+
+  const { limit, offset } = getPagination(req, 100, 2000);
+  const pagination = buildPaginationClause(limit, offset);
+  query += ` ORDER BY APPOINTMENT_DATE DESC, START_TIME DESC${pagination.clause}`;
+
+  const finalBinds = { ...binds, ...pagination.binds };
+
+  let connection;
+
+  try {
+    connection = await getOracleConnection();
+    const result = await connection.execute(query, finalBinds, {
+      outFormat: oracledb.OUT_FORMAT_OBJECT
+    });
+
+    const pageNumber = limit > 0 ? Math.floor(offset / limit) + 1 : 1;
+    res.status(200).json({
+      page: pageNumber,
+      limit,
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch outpatient appointments:", err);
+    res.status(500).json({
+      message: "❌ Failed to fetch outpatient appointments",
+      error: err.message
+    });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// 46. Update outpatient appointment
+app.put("/outpatientAppointments/:id", auth, async (req, res) => {
+  const { id } = req.params;
+  const updateFields = [];
+  const binds = { id: Number(id) };
+
+  if (Number.isNaN(binds.id)) {
+    return res.status(400).json({ message: "❌ Invalid appointment ID" });
+  }
+
+  const {
+    clinic,
+    date,
+    start,
+    end,
+    studentId,
+    studentEmail,
+    studentUniversityId,
+    patientUid,
+    patientName,
+    patientIdNumber,
+    patientPhone,
+    notes,
+    serial,
+    status
+  } = req.body;
+
+  if (clinic) {
+    updateFields.push("CLINIC = :clinic");
+    binds.clinic = clinic;
+  }
+
+  if (date) {
+    const normalizedDate = String(date).split("T")[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) {
+      return res.status(400).json({ message: "❌ Invalid appointment date" });
+    }
+    updateFields.push("APPOINTMENT_DATE = TO_DATE(:appointmentDate, 'YYYY-MM-DD')");
+    binds.appointmentDate = normalizedDate;
+  }
+
+  if (start) {
+    const startTime = normalizeTimeString(start);
+    if (!startTime) {
+      return res.status(400).json({ message: "❌ Invalid start time format" });
+    }
+    updateFields.push("START_TIME = TO_TIMESTAMP(:startTime, 'HH24:MI')");
+    binds.startTime = startTime;
+  }
+
+  if (end) {
+    const endTime = normalizeTimeString(end);
+    if (!endTime) {
+      return res.status(400).json({ message: "❌ Invalid end time format" });
+    }
+    updateFields.push("END_TIME = TO_TIMESTAMP(:endTime, 'HH24:MI')");
+    binds.endTime = endTime;
+  }
+
+  if (studentId) {
+    updateFields.push("STUDENT_ID = :studentId");
+    binds.studentId = studentId;
+  }
+
+  if (studentEmail) {
+    updateFields.push("STUDENT_EMAIL = :studentEmail");
+    binds.studentEmail = studentEmail;
+  }
+
+  if (studentUniversityId !== undefined) {
+    updateFields.push("STUDENT_UNIVERSITY_ID = :studentUniversityId");
+    binds.studentUniversityId = studentUniversityId;
+  }
+
+  if (patientUid) {
+    updateFields.push("PATIENT_UID = :patientUid");
+    binds.patientUid = patientUid;
+  }
+
+  if (patientName) {
+    updateFields.push("PATIENT_NAME = :patientName");
+    binds.patientName = patientName;
+  }
+
+  if (patientIdNumber !== undefined) {
+    updateFields.push("PATIENT_ID_NUMBER = :patientIdNumber");
+    binds.patientIdNumber = patientIdNumber;
+  }
+
+  if (patientPhone !== undefined) {
+    updateFields.push("PATIENT_PHONE = :patientPhone");
+    binds.patientPhone = patientPhone;
+  }
+
+  if (notes !== undefined) {
+    updateFields.push("NOTES = :notes");
+    binds.notes = notes;
+  }
+
+  if (serial !== undefined) {
+    updateFields.push("SERIAL = :serial");
+    binds.serial = serial;
+  }
+
+  if (status) {
+    updateFields.push("STATUS = :status");
+    binds.status = status;
+  }
+
+  if (updateFields.length === 0) {
+    return res.status(400).json({ message: "❌ No fields provided to update" });
+  }
+
+  updateFields.push("UPDATED_AT = SYSTIMESTAMP");
+
+  let connection;
+
+  try {
+    connection = await getOracleConnection();
+    const sql = `
+      UPDATE OUTPATIENT_APPOINTMENTS
+      SET ${updateFields.join(", ")}
+      WHERE ID = :id
+    `;
+
+    const result = await connection.execute(sql, binds, { autoCommit: true });
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({ message: "❌ Outpatient appointment not found" });
+    }
+
+    res.json({
+      message: "✅ Outpatient appointment updated",
+      rowsAffected: result.rowsAffected
+    });
+  } catch (err) {
+    console.error("❌ Error updating outpatient appointment:", err);
+    res.status(500).json({
+      message: "❌ Failed to update outpatient appointment",
+      error: err.message
+    });
   } finally {
     if (connection) await connection.close();
   }
